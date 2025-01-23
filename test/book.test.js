@@ -28,9 +28,7 @@ afterAll((done) => {
   server.close(done);
 });
 
-beforeEach(async () => {
-  await BOOK.deleteMany(); 
-});
+
 afterEach(async () => {
   await BOOK.deleteMany();
 });
@@ -38,7 +36,7 @@ afterEach(async () => {
 
 
 
-describe('Book API Routes', () => {
+describe('Book API ', () => {
   describe('POST /api/books', () => {
     it('should create a new book', async () => {
       const res = await request(app)
@@ -52,7 +50,20 @@ describe('Book API Routes', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.book.title).toBe('Book');
     });
-
+    it('should return 400 for duplicate ISBN', async () => {
+      const bookData = {
+        title: 'New Book',
+        author: 'New Author',
+        isbn: '12347',  
+        publishedDate: 2023,
+      };
+      
+      await request(app).post('/api/books').send(bookData);
+      
+      const res = await request(app).post('/api/books').send(bookData);
+      expect(res.statusCode).toBe(400);
+      expect(res.body.message).toContain('Validation error: ISBN must be unique');
+    });
     it('should return 400 if required fields are missing', async () => {
       const res = await request(app)
         .post('/api/books')
@@ -73,14 +84,13 @@ describe('Book API Routes', () => {
       const res = await request(app).get('/api/books');
       expect(res.statusCode).toBe(200);
       expect(res.body.books.length).toBe(2);
-  });
+    });
   
-  it('should return 404 if no books are found', async () => {
+    it('should return 404 if no books are found', async () => {
       await BOOK.deleteMany(); 
       const res = await request(app).get('/api/books');
       expect(res.statusCode).toBe(404);
-  });
-  
+    });
   })
   describe("PUT /api/books/:id" , () => {
     let bookid;
@@ -92,9 +102,8 @@ describe('Book API Routes', () => {
         publishedDate: 2020
       })
       bookid = book._id
-    })
+      })
     it("Should update the book" ,  async () => {
-
       const res = await request(app).put(`/api/books/${bookid}`).send(
         {
           title:"update title",
@@ -129,12 +138,10 @@ describe('Book API Routes', () => {
       expect(res.statusCode).toBe(202);
       expect(res.body.book.title).toBe('Only Title Updated');
       expect(res.body.book.author).toBe('Original Author');
-    });
-    
+    }); 
   })
   describe('DELETE /api/books/:id', () => {
     let bookId;
-
     beforeEach(async () => {
       const book = await BOOK.create({
         title: 'Book to Delete',
@@ -144,20 +151,30 @@ describe('Book API Routes', () => {
       });
       bookId = book._id;
     });
-
     it('should delete a book', async () => {
       const res = await request(app).delete(`/api/books/${bookId}`);
       expect(res.statusCode).toBe(202);
       expect(res.body.book.title).toBe('Book to Delete');
-
       const deletedBook = await BOOK.findById(bookId);
       expect(deletedBook).toBeNull();
     });
-
     it('should return 404 if book not found', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const res = await request(app).delete(`/api/books/${fakeId}`);
       expect(res.statusCode).toBe(404);
+    })
+  })
+  describe('Search /api/books/search', () => {
+    it('should search books by title', async () => {
+      await BOOK.create([
+        { title: 'mern', author: 'node.js', isbn: '9787' },
+        { title: 'java', author: 'springboot', isbn: '9700' },
+      ]);
+  
+      const res = await request(app).get('/api/books/search').query({ title: 'mern' });
+      expect(res.statusCode).toBe(200);
+      expect(res.body.books.length).toBe(1);
+      expect(res.body.books[0].title).toBe('mern');
     })
   })
 });
