@@ -21,7 +21,7 @@ const BookSchema = new Schema({
         unique:true,
     },
     publishedDate:{
-        type:Number,
+        type:Date
         
     }
 }, {timestamps:true})

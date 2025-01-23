@@ -15,9 +15,13 @@ async function Createbook(req , res) {
         })
         res.status(201).json({message:`${book.title} has been created` , book})
     } catch (error) {
-        if(error.code ===  11000){
+        if (error.name === 'ValidationError') {
+            const fieldErrors = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ message: `Validation error: ${fieldErrors.join(', ')}` });
+        }
+        if (error.code === 11000) {
             console.error("Duplicate Key Error:", error.keyValue);
-            return res.status(400).json({ message: `Duplicate Key Error: ${JSON.stringify(error.keyValue)}` });
+            return res.status(400).json({ message: `Duplicate ISBN: You cannot create a book with the ISBN "${error.keyValue.isbn}".` });
         }
         console.error("Error creating book:", error)
         res.status(500).json({message:"Oops! We encountered an unexpected error while adding the book. Please try again later."})  
@@ -28,8 +32,8 @@ async function Getallbook(req , res) {
     
     try {
         const page = Number.parseInt(req.query.page) || 1
-        const limit = parseInt(req.query.limit) || 1
-        const skip = req.query.skip || 0
+        const limit = parseInt(req.query.limit) 
+        const skip =  limit ? (page -1)*limit : 0
         const sortdata = req.query.sortBy || "title"
         const sortorder = req.query.order || 'desc'?-1:1
 
@@ -37,11 +41,19 @@ async function Getallbook(req , res) {
         if(!vaildatesortdata.includes(sortdata)){
             return res.status(400).json({ message: `Invalid sort field. Allowed fields are: ${vaildatesortdata.join(', ')}` });
         }
+        let books;
+        let totalbook;
+        let totalpages = 0;
 
-        const books = await BOOK.find({}).sort({[sortdata]:sortorder}).skip(skip).limit(limit)
+        if(limit) {
+             books = await BOOK.find({}).sort({[sortdata]:sortorder}).skip(skip).limit(limit)
 
-        const totalbook =  await BOOK.countDocuments();
-        const totalpages = Math.ceil(totalbook/limit)
+             totalbook =  await BOOK.countDocuments();
+             totalpages = Math.ceil(totalbook/limit)
+        }else{
+            books = await BOOK.find({}).sort({[sortdata]:sortorder})
+            totalbook = await BOOK.countDocuments();
+        }
 
         if(books.length  === 0){
             return res.status(404).json({message:"Be the first to add a book!"})
@@ -64,7 +76,7 @@ async function GetbookbyId(req , res) {
     const {id} = req.params
 
     try {
-        const book = await BOOK.findById({_id:id})
+        const book = await BOOK.findById(id)
 
         if(!book){
             return res.status(404).json({message:"Book not found"})
@@ -127,6 +139,9 @@ async function Deletebook(req , res) {
         res.status(500).json({message:"Oops! We encountered an unexpected error . Please try again later."})
     }
 }
+
+
+
 
 
 module.exports = {
