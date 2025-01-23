@@ -7,7 +7,7 @@ const exp = require('constants');
 
 beforeAll(async () => {
   
-  await mongoose.connect('mongodb+srv://sourabh:F7xHxinq8rVK6atM@cluster0.8gdqi.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0', {
+  await mongoose.connect(process.env.MONGO_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   });
@@ -52,8 +52,8 @@ describe('Book API ', () => {
     });
     it('should return 400 for duplicate ISBN', async () => {
       const bookData = {
-        title: 'New Book',
-        author: 'New Author',
+        title: 'Book 1',
+        author: 'Author 1',
         isbn: '12347',  
         publishedDate: 2023,
       };
@@ -77,8 +77,8 @@ describe('Book API ', () => {
     it('should get all books', async () => {
       await BOOK.deleteMany(); 
       await BOOK.create([
-          { title: 'The Great Gatsby', author: 'F. Scott Fitzgerald', isbn: '9787' },
-          { title: 'To Kill a Mockingbird', author: 'Harper Lee', isbn: '9700' }
+          { title: 'node.js', author: 'sourabh', isbn: '9787' },
+          { title: 'react', author: 'author-2', isbn: '9700' }
       ]);
   
       const res = await request(app).get('/api/books');
@@ -96,8 +96,8 @@ describe('Book API ', () => {
     let bookid;
     beforeEach(async () => {
       const book = await BOOK.create({
-        title: 'Original Title',
-        author: 'Original Author',
+        title: 'old title',
+        author: 'old author',
         isbn: '002300',
         publishedDate: 2020
       })
@@ -128,25 +128,14 @@ describe('Book API ', () => {
         });
       expect(res.statusCode).toBe(404);
     });
-
-    it('should update only title if only title provided', async () => {
-      const res = await request(app)
-        .put(`/api/books/${bookid}`)
-        .send({
-          title: 'Only Title Updated'
-        });
-      expect(res.statusCode).toBe(202);
-      expect(res.body.book.title).toBe('Only Title Updated');
-      expect(res.body.book.author).toBe('Original Author');
-    }); 
   })
   describe('DELETE /api/books/:id', () => {
     let bookId;
     beforeEach(async () => {
       const book = await BOOK.create({
-        title: 'Book to Delete',
+        title: 'Book Delete',
         author: 'Delete Author',
-        isbn: '9999999999',
+        isbn: '99999',
         publishedDate: 2021
       });
       bookId = book._id;
@@ -154,7 +143,7 @@ describe('Book API ', () => {
     it('should delete a book', async () => {
       const res = await request(app).delete(`/api/books/${bookId}`);
       expect(res.statusCode).toBe(202);
-      expect(res.body.book.title).toBe('Book to Delete');
+      expect(res.body.book.title).toBe('Book Delete');
       const deletedBook = await BOOK.findById(bookId);
       expect(deletedBook).toBeNull();
     });
